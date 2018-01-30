@@ -4,20 +4,8 @@ import scala.util.{Failure, Success, Try}
 import scala.reflect.runtime.universe
 
 object AdapterHelper {
-  def findAdapterFunction(adapterFunctionClass: String): ((_, _)) => Array[Byte] = {
-    val runtimeMirror = universe.runtimeMirror(getClass.getClassLoader)
-
-    val companionObj = Try(runtimeMirror.staticModule(adapterFunctionClass)) match {
-      case Success(module) =>
-        Try(runtimeMirror.reflectModule(module).instance.asInstanceOf[((_, _)) => Array[Byte]]) match {
-          case Success(obj) => obj
-          case Failure(ex) => throw new Exception(s"Class '$adapterFunctionClass' was found but is not of type 'Function1'.", ex)
-        }
-      case Failure(ex) => throw new Exception(s"Specified adapter class '$adapterFunctionClass' was not found.", ex)
-    }
-
-    companionObj
-  }
+  def findAdapterFunction(adapterFunctionClass: String): ((_, _)) => Array[Byte] =
+    findCompanionObject(adapterFunctionClass)
 
   def findKafkaParams(kafkaParamsClass: String): Map[String, Object] =
     findCompanionObject[() => Map[String, Object]](kafkaParamsClass)()
