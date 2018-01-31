@@ -1,10 +1,12 @@
 package mn.hart.kafka2eventhub
 
+import org.apache.kafka.clients.consumer.ConsumerRecord
+
 import scala.util.{Failure, Success, Try}
 import scala.reflect.runtime.universe
 
 object AdapterHelper {
-  def findAdapterFunction(adapterFunctionClass: String): ((_, _)) => Array[Byte] =
+  def findAdapterFunction(adapterFunctionClass: String): (ConsumerRecord[AnyVal, AnyVal]) => Array[Byte] =
     findCompanionObject(adapterFunctionClass)
 
   def findKafkaParams(kafkaParamsClass: String): Map[String, Object] =
