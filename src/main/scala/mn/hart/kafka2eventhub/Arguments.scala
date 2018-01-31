@@ -4,12 +4,14 @@ import scala.concurrent.duration.Duration
 
 case class Arguments(
   batchDuration: Duration = null,
-  brokerList: Seq[String] = List(),
-  zookeeper: String = null,
-  groupId: String = null,
   topics: Seq[String] = List(),
+  brokerList: Option[String] = None,
+  zookeeper: Option[String] = null,
+  groupId: Option[String] = null,
   adapterFunctionClass: Option[String] = None,
-  kafkaParamsClass: Option[String] = None
+  kafkaParamsClass: Option[String] = None,
+  compression: Option[String] = None,
+  force: Boolean = false
 )
 
 object Arguments {
@@ -20,25 +22,36 @@ object Arguments {
       opt[Duration]("duration").required().valueName("<duration>").action((d, args) => args.copy(batchDuration = d))
         .text("Spark Streaming batch duration")
 
-      opt[Seq[String]]("broker-list").required().valueName("<broker1>,[<broker2>...]").action((b, args) => args.copy(brokerList = b))
-        .text("Kafka broker list")
-        .validate(b => if (b.nonEmpty) success else failure("Value <broker1> must be present"))
-
-      opt[String]("zookeeper").required().valueName("<zookeeper>").action((z, args) => args.copy(zookeeper = z))
-        .text("Zookeeper hostname")
-
-      opt[String]("group-id").required().valueName("<groupid>").action((g, args) => args.copy(groupId = g))
-        .text("Kafka group ID used for commit log")
-
       opt[Seq[String]]("topics").required().valueName("<topic1>,[<topic2>...]").action((t, args) => args.copy(topics = t))
         .text("Kafka topics to forward into EventHub")
         .validate(t => if (t.nonEmpty) success else failure("Value <topic1> must be present"))
 
+      opt[Seq[String]]("broker-list").optional().valueName("<broker1>,[<broker2>...]")
+        .action((b, args) => args.copy(brokerList = Some(b.reduce(_ + ','+ _))))
+        .text("Kafka broker list")
+        .validate(b => if (b.nonEmpty) success else failure("Value <broker1> must be present"))
+
+      opt[String]("zookeeper").optional().valueName("<zookeeper>").action((z, args) => args.copy(zookeeper = Some(z)))
+        .text("Zookeeper hostname")
+
+      opt[String]("group-id").optional().valueName("<groupid>").action((g, args) => args.copy(groupId = Some(g)))
+        .text("Kafka group ID used for commit log")
+
       opt[String]("adapter-object").optional().valueName("<namespace>.<objectname>").action((o, args) => args.copy(adapterFunctionClass = Some(o)))
-        .text("Fully qualified Scala root-level object name of function to use when converting deserialized data from Kafka to EventHub format")
+        .text("fully qualified Scala root-level object name of function to use when converting deserialized data from Kafka to EventHub format")
 
       opt[String]("kafka-params-object").optional().valueName("<namespace>.<objectname>").action((o, args) => args.copy(kafkaParamsClass = Some(o)))
-        .text("Fully qualified Scala root-level object name of function supplying a custom Kafak parameter map")
+        .text("fully qualified Scala root-level object name of function supplying a custom Kafak parameter map")
+
+      opt[String]("output-compression").optional().valueName("<format>").action((c, args) => args.copy(compression = Some(c)))
+        .text("compress events sent to EventHub using <format> (currently supports 'gzip' only)")
+        .validate(c => c.toLowerCase match {
+          case "gzip" => success
+          case _ => failure("Value <format> must be in the set: ('gzip')")
+        })
+
+      opt[Unit]("force").optional().action((_, args) => args.copy(force = true))
+        .text("skip validation of Kafka parameters")
 
       note(
         """Customization
