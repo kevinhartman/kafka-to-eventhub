@@ -6,8 +6,15 @@ import scala.util.{Failure, Success, Try}
 import scala.reflect.runtime.universe
 
 object AdapterHelper {
-  def findAdapterFunction(adapterFunctionClass: String): (ConsumerRecord[AnyVal, AnyVal]) => Array[Byte] =
-    findCompanionObject(adapterFunctionClass)
+  def findAdapterFunction(adapterFunctionClass: String): (ConsumerRecord[AnyVal, AnyVal]) => Array[Byte] = {
+    val adapterFunction = findCompanionObject[(ConsumerRecord[AnyVal, AnyVal]) => Array[Byte]](adapterFunctionClass)
+
+    if (!adapterFunction.getClass.getInterfaces.contains(classOf[Serializable])) {
+      throw new Exception(s"Class '$adapterFunctionClass' was found but is not serializable.")
+    }
+
+    adapterFunction
+  }
 
   def findKafkaParams(kafkaParamsClass: String): Map[String, Object] =
     findCompanionObject[() => Map[String, Object]](kafkaParamsClass)()
