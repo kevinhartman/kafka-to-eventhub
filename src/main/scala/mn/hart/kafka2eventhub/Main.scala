@@ -1,8 +1,9 @@
 package mn.hart.kafka2eventhub
 
+import com.microsoft.azure.eventhubs.EventData
 import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.spark.streaming.kafka010.{ConsumerStrategies, HasOffsetRanges, KafkaUtils, LocationStrategies}
-import org.apache.spark.streaming.{Duration, Seconds, StreamingContext}
+import org.apache.spark.streaming.kafka010._
+import org.apache.spark.streaming.{Duration, StreamingContext}
 import org.apache.spark.{SparkConf, SparkContext}
 
 // TODO: Assert kafka params make sense
@@ -13,7 +14,7 @@ object Main extends App {
 
   val adapterFunction = arguments.adapterFunctionClass match {
     case Some(className) => AdapterHelper.findAdapterFunction(className) // TODO: log
-    case None => DefaultAdapter.asInstanceOf[(ConsumerRecord[_, _]) => Array[Byte]]
+    case None => DefaultAdapter.asInstanceOf[(ConsumerRecord[_, _]) => EventData]
   }
 
   // Get and validate custom Kafka params if present
@@ -24,10 +25,11 @@ object Main extends App {
     KafkaParameters.validate(kafkaParams)
   }
 
+  // TODO: move to separate function
   val conf = new SparkConf()
     .setIfMissing("spark.app.name", "kafka-to-eventhub")
     .setIfMissing("spark.master", "local[*]")
-    .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer") // TODO: ensure serialization correct
+    .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
 
   val sparkContext = new SparkContext(conf)
   val ssc = new StreamingContext(sparkContext, Duration(arguments.batchDuration.toMillis)) // TODO: set batch window from config
@@ -39,10 +41,22 @@ object Main extends App {
   stream.foreachRDD(rdd => {
     val kafkaOffsetRanges = rdd.asInstanceOf[HasOffsetRanges].offsetRanges
 
-    val transformedRdd = rdd.map[Array[Byte]](adapterFunction)
+    val transformedRdd = rdd.map[EventData](adapterFunction)
 
-    print(new String(List(transformedRdd.collect()(0)).head))
+    // TODO: do this at stream level to skip check each RDD
+    val compressedRdd = arguments.compression match {
+      case Some("gzip") =>
+        GZipCompress(transformedRdd)
+      case _ =>
+        // Skip compression
+        transformedRdd
+    }
 
+    // TODO: Write all partitions into EventHub as batches here
+    //
+
+    // All partitions have been written. Mark offsets as completed in Kafka.
+    stream.asInstanceOf[CanCommitOffsets].commitAsync(kafkaOffsetRanges)
   })
 
   ssc.start()

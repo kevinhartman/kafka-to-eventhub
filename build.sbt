@@ -20,5 +20,6 @@ libraryDependencies ++= Seq(
 libraryDependencies ++= Seq(
   "com.microsoft.azure" % "azure-eventhubs" % "0.15.1",
   "org.apache.spark" %% "spark-streaming-kafka-0-10" % sparkVersion,
+  "com.microsoft.azure" % "azure-eventhubs" % "0.15.1",
   "com.github.scopt" % "scopt_2.11" % "3.7.0"
 )

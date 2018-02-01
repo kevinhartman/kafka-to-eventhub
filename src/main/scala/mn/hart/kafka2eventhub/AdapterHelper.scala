@@ -1,13 +1,14 @@
 package mn.hart.kafka2eventhub
 
+import com.microsoft.azure.eventhubs.EventData
 import org.apache.kafka.clients.consumer.ConsumerRecord
 
 import scala.util.{Failure, Success, Try}
 import scala.reflect.runtime.universe
 
 object AdapterHelper {
-  def findAdapterFunction(adapterFunctionClass: String): (ConsumerRecord[AnyVal, AnyVal]) => Array[Byte] = {
-    val adapterFunction = findCompanionObject[(ConsumerRecord[AnyVal, AnyVal]) => Array[Byte]](adapterFunctionClass)
+  def findAdapterFunction(adapterFunctionClass: String): (ConsumerRecord[AnyVal, AnyVal]) => EventData = {
+    val adapterFunction = findCompanionObject[(ConsumerRecord[AnyVal, AnyVal]) => EventData](adapterFunctionClass)
 
     if (!adapterFunction.getClass.getInterfaces.contains(classOf[Serializable])) {
       throw new Exception(s"Class '$adapterFunctionClass' was found but is not serializable.")
