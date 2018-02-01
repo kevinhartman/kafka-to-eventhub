@@ -8,7 +8,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 
 // TODO: Assert kafka params make sense
 // TODO: Add back-pressure
-// TODO: Optimize serialization and garbage collection. Should be no need for Serialization since no shuffles.
+// TODO: Optimize garbage collection.
 object Main extends App {
   val arguments = Arguments(args)
 
@@ -25,13 +25,7 @@ object Main extends App {
     KafkaParameters.validate(kafkaParams)
   }
 
-  // TODO: move to separate function
-  val conf = new SparkConf()
-    .setIfMissing("spark.app.name", "kafka-to-eventhub")
-    .setIfMissing("spark.master", "local[*]")
-    .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-
-  val sparkContext = new SparkContext(conf)
+  val sparkContext = new SparkContext(SparkConf())
   val ssc = new StreamingContext(sparkContext, Duration(arguments.batchDuration.toMillis)) // TODO: set batch window from config
 
   // Create direct kafka stream
