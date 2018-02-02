@@ -9,7 +9,7 @@ object SparkJob {
   type KafkaRDD = RDD[ConsumerRecord[AnyVal, AnyVal]]
   type EventHubRDD = (RDD[EventData], Array[OffsetRange])
 
-  def apply(arguments: Arguments, offsetCommitter: CanCommitOffsets): Function[KafkaRDD, Unit] = {
+  def apply(arguments: Arguments, offsetCommitter: CanCommitOffsets): (KafkaRDD => Unit) = {
 
     // Load custom adapter function or use default if not specified
     val adapterFunction = arguments.adapterFunctionClass match {
@@ -17,25 +17,11 @@ object SparkJob {
       case None => DefaultAdapter.asInstanceOf[(ConsumerRecord[_, _]) => EventData]
     }
 
-    val transformRDD: PartialFunction[KafkaRDD, EventHubRDD] = {
-      case rdd =>
-        val offsets = rdd.asInstanceOf[HasOffsetRanges].offsetRanges
-        val transformedRdd = rdd.map[EventData](adapterFunction)
+    val transformRDD: (KafkaRDD => EventHubRDD) = { rdd =>
+      val offsets = rdd.asInstanceOf[HasOffsetRanges].offsetRanges
+      val transformedRdd = rdd.map[EventData](adapterFunction)
 
-        (transformedRdd, offsets)
-    }
-
-    val uploadRDD: PartialFunction[EventHubRDD, EventHubRDD] = {
-      case eventHubRdd =>
-        val (rdd, offsetRange) = eventHubRdd
-
-        eventHubRdd
-    }
-
-    val commitKafkaOffsets: PartialFunction[EventHubRDD, Unit] = {
-      case (_, offsets) =>
-        // All partitions have been written. Mark offsets as completed in Kafka.
-        offsetCommitter.commitAsync(offsets)
+      (transformedRdd, offsets)
     }
 
     transformRDD
@@ -48,7 +34,13 @@ object SparkJob {
             { case (rdd, offsets) => (rdd, offsets)}
         }
       )
-      .andThen(uploadRDD)
-      .andThen(commitKafkaOffsets)
+      .andThen {
+        case (rdd, offsets) =>
+          // Upload batch to EventHub
+          UploadToEventHub(arguments, rdd)
+
+          // All partitions have been written. Mark offsets as completed in Kafka.
+          offsetCommitter.commitAsync(offsets)
+      }
   }
 }
