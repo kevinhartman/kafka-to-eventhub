@@ -59,7 +59,7 @@ object Arguments {
         .text("fully qualified Scala root-level object name of function supplying a custom Kafak parameter map")
 
       opt[String]("output-compression").optional().valueName("<format>")
-        .action((c, args) => args.copy(compression = Some(c)))
+        .action((c, args) => args.copy(compression = Some(c.toLowerCase)))
         .text("compress events sent to EventHub using <format> (currently supports 'gzip' only)")
         .validate(c => c.toLowerCase match {
           case "gzip" => success
