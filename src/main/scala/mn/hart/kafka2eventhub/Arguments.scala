@@ -25,11 +25,11 @@ object Arguments {
         .action((d, args) => args.copy(batchDuration = d))
         .text("Spark Streaming batch duration")
 
-      opt[String]("eventhub-connection-string").abbr("eh-conn").required().valueName("<connection string>")
+      opt[String]("eh-conn").required().valueName("<connection string>")
         .action((e, args) => args.copy(eventHubConnStr = e))
         .text("EventHub connection string")
 
-      opt[String]("eventhub-name").abbr("eh-name").required().valueName("<name>")
+      opt[String]("eh-name").required().valueName("<name>")
         .action((n, args) => args.copy(eventHubName = n))
 
       opt[Seq[String]]("topics").required().valueName("<topic1>,[<topic2>...]")
