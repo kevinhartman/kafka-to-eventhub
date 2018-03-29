@@ -16,7 +16,7 @@ To use this tool, build it and deploy to a Spark cluster. It should work out of 
 `--group-id` | Kafka group ID used for commit log
 `--adapter-object` | Fully qualified Scala root-level object name of function to use when converting deserialized data from Kafka to EventHub format
 `--kafka-params-object` | Fully qualified Scala root-level object name of function supplying a custom Kafak parameter map
-`--compression` | Compress events sent to EventHub using the specified format (currently supports 'gzip' only)
+`--compression` | Compress events sent to EventHub using the specified format (currently supports 'gzip' only). If compression is used, EventHub consumers must be capable of decompressing data. For example, Azure Stream Analytics supports automatic decompression from an EventHub, which can be configured when adding a new input source.
 `--force` | Skip validation of Kafka parameters
 
 ## Submission
@@ -71,7 +71,7 @@ libraryDependencies ++= Seq(
 ```
 
 ### Specifying the adapter
-To use the compiled custom adapter, it must first be present in the Spark application's classpath so that it's found. Spark can do this automatically through the use of the `--jars` argument used during cluster submission. There are a [few ways to achieve this](https://spark.apache.org/docs/latest/submitting-applications.html#advanced-dependency-management), but for simplicity, let's assume the packaged JAR is located on HDFS as `hdfs://MyCustomAdapter.jar`.
+To use the compiled custom adapter, it must first be present in the tool's classpath. Spark can automatically pull down and include classes from JARs through the use of the `--jars` argument used during cluster submission. There are a [few ways to achieve this](https://spark.apache.org/docs/latest/submitting-applications.html#advanced-dependency-management), but for simplicity, let's assume the packaged JAR is located on HDFS as `hdfs://MyCustomAdapter.jar`.
 
 With the JAR available in HDFS, the following submission command specifies its location to Spark and simultaneously configures the tool with the adapter's name, `com.example.adapters.MyCustomAdapter`.
 
@@ -89,3 +89,4 @@ spark-submit --jars hdfs://MyCustomAdaper.jar hdfs://kafka-to-eventhub.jar \
 
 # Notes
 - At-least-once semantics are guaranteed, meaning each event in Kafka will be placed into the EventHub topic at least once, but not exactly once (duplicates are possible). Consequently, downstream EventHub topic consumers must be able to handle duplicates.
+- When configuring Spark workers, consider that tasks running in parallel on the same Spark nodes may be competing for network bandwidth.
