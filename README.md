@@ -1,4 +1,4 @@
-# Overview
+# Kafka to EventHub Mirror
 This purpose of this project is to mirror data from a Kafka instance into Azure EventHub in real time. It consists of an Apache Spark streaming application which allows it to scale out to match the parallelism (# of partitions) of the source Kafka topic(s).
 
 # Deployment
