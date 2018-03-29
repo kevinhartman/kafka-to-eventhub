@@ -19,6 +19,20 @@ To use this tool, build it and deploy to a Spark cluster. It should work out of 
 `--compression` | Compress events sent to EventHub using the specified format (currently supports 'gzip' only)
 `--force` | Skip validation of Kafka parameters
 
+## Submission
+The example command below demonstrates the minimal configuration, and assumes the mirroring tool is available in HDFS as `hdfs://kafka-to-eventhub.jar`. Submit this job to your production cluster just as you would any other workload, subbing in the correct parameter values for your environment.
+
+```sh
+spark-submit hdfs://kafka-to-eventhub.jar \
+  --duration 5s \
+  --broker-list localhost:9092 \
+  --zookeeper localhost:2181 \
+  --group-id test1 \
+  --topics test \
+  --eh-conn "Endpoint=..." \
+  --eh-name kafka-to-eventhub
+```
+
 # Events
 By default, Kafka messages (records) are transformed into EventHub events simply by dropping the message's key. In other words, the value of the Kafka message is forwarded to EventHub verbatim, while the key is ignored. Recall that Kafka messages are key-value pairs, while EventHub events are single values.
 
