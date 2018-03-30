@@ -2,7 +2,7 @@
 This purpose of this project is to mirror data from a Kafka instance into Azure EventHub in real time. It consists of an Apache Spark streaming application which allows it to scale out to match the parallelism (# of partitions) of the source Kafka topic(s).
 
 # Deployment
-To use this tool, build it and deploy to a Spark cluster. It should work out of the box with minimal configuration. The following section lists the available parameters and their functions (specified to the tool as program arguments).
+To use this tool, build it and deploy to a Spark cluster. It should work out of the box with minimal configuration. The following section lists the available parameters and their functions (passed as program arguments).
 
 ## Parameters
 | Parameter | Description |
@@ -39,10 +39,10 @@ By default, Kafka messages (records) are transformed into EventHub events simply
 If you need to transform Kafka messages differently, use a custom event adapter as described below. As an example, perhaps you'd like to combine the Kafka message's key and value into a JSON object, sending that along to EventHub.
 
 ## Custom event adapters
-To define a custom transformation funciton to convert Kafka messages into EventHub events, define a custom event adapter. This is done by writing Scala code, and including the compiled class on the classpath when submitting the `kafka-to-eventhub` tool to the Spark cluster.
+To define a custom transformation function to convert Kafka messages into EventHub events, define a custom event adapter. This is done by writing Scala code and including its packaged JAR when deploying the mirroring tool to the Spark cluster.
 
 ### Code example
-To implement a custom adapter, use the following as a template to define a root-level Scala object. See the [DefaultAdapter](src/main/scala/mn/hart/kafka2eventhub/DefaultAdapter.scala) for an example. Note that the package name is unimportant.
+To implement a custom adapter, use the following as a template to define a root-level Scala object. See the [DefaultAdapter](src/main/scala/mn/hart/kafka2eventhub/DefaultAdapter.scala) for a working example. Note that the package name is unimportant.
 
 ```scala
 package com.example.adapters
@@ -71,12 +71,12 @@ libraryDependencies ++= Seq(
 ```
 
 ### Specifying the adapter
-To use the compiled custom adapter, it must first be present in the tool's classpath. Spark can automatically pull down and include classes from JARs through the use of the `--jars` argument used during cluster submission. There are a [few ways to achieve this](https://spark.apache.org/docs/latest/submitting-applications.html#advanced-dependency-management), but for simplicity, let's assume the packaged JAR is located on HDFS as `hdfs://MyCustomAdapter.jar`.
+To use the compiled custom adapter, it must first be present in the mirroring tool's classpath. Spark can automatically pull down and include classes from JARs through the use of the `--jars` argument used during cluster submission. There are a [few ways to achieve this](https://spark.apache.org/docs/latest/submitting-applications.html#advanced-dependency-management), but for simplicity, let's assume the packaged JAR is located on HDFS as `hdfs://MyCustomAdapter.jar`.
 
-With the JAR available in HDFS, the following submission command specifies its location to Spark and simultaneously configures the tool with the adapter's name, `com.example.adapters.MyCustomAdapter`.
+With the JAR available in HDFS, the following submission command specifies its location to Spark and simultaneously configures the mirroring tool with the adapter's name, `com.example.adapters.MyCustomAdapter`.
 
 ```sh
-spark-submit --jars hdfs://MyCustomAdaper.jar hdfs://kafka-to-eventhub.jar \
+spark-submit --jars hdfs://MyCustomAdapter.jar hdfs://kafka-to-eventhub.jar \
   --duration 5s \
   --broker-list localhost:9092 \
   --zookeeper localhost:2181 \
@@ -107,9 +107,16 @@ object DefaultKafkaParams extends (() => Map[String, Object]) {
 }
 ```
 
-Use it as a template to create your own as needed. Note that the tool will attempt to validate these settings to ensure necessary expectations are not violated (such as auto commit remaining disabled). This can be overridden by including the `--force` parameter, but will result in data loss.
+Use it as a template to create your own if needed. Note that the tool will attempt to validate these settings to ensure necessary expectations are not violated (such as auto commit remaining disabled). This can be overridden by including the `--force` parameter, but will result in data loss.
 
-Note that the deserializers specified here (`ByteArrayDeserializer`) should correspond to the types of the selected custom event adapter. For example, if `key.deserializer` and `value.deserializer` were both set to `classOf[LongDeserializer]`, the event adapter selected in tandem with this config map (through program arguments) should have the following interface.
+## Specifying the configuration map
+Just as with custom event adapters, the Kafka configuration map provider object must be packaged and submitted along with the mirroring tool at deployment. Feel free to package it into the same JAR as any custom event adapters you may have.
+
+To specify the configuration map provider object during deployment, include `--kafka-params-object` along with the fully qualified name of the Scala object.
+
+## Deserializers
+
+The deserializers specified in the Kafka configuration map (i.e. `ByteArrayDeserializer`) should correspond to the types of the selected custom event adapter. For example, if `key.deserializer` and `value.deserializer` were both set to `classOf[LongDeserializer]`, the event adapter selected in tandem with this config map (through program arguments) should conform to the following interface.
 
 ```scala
 object MyLongAdapter extends ((ConsumerRecord[Long, Long]) => EventData) with Serializable {
@@ -120,3 +127,4 @@ object MyLongAdapter extends ((ConsumerRecord[Long, Long]) => EventData) with Se
 # Notes
 - At-least-once semantics are guaranteed, meaning each event in Kafka will be placed into the EventHub topic at least once, but not exactly once (duplicates are possible). Consequently, downstream EventHub topic consumers must be able to handle duplicates.
 - When configuring Spark workers, consider that tasks running in parallel on the same Spark nodes may be competing for network bandwidth.
+- Check the tool's help text for supplemental instruction.
