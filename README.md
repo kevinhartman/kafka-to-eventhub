@@ -87,6 +87,36 @@ spark-submit --jars hdfs://MyCustomAdaper.jar hdfs://kafka-to-eventhub.jar \
   --eh-name kafka-to-eventhub
 ```
 
+# Advanced Configuration
+If you need more control over Spark's connection to Kafka (e.g. SSL configuration), you can define a Scala object which provides a Kafka configuration map containing any key-value pairs documented [here](http://kafka.apache.org/documentation.html#newconsumerconfigs).
+
+The default map provider object (used otherwise) is defined as follows.
+
+```scala
+package mn.hart.kafka2eventhub
+
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
+
+object DefaultKafkaParams extends (() => Map[String, Object]) {
+  override def apply(): Map[String, Object] = Map(
+    "key.deserializer" -> classOf[ByteArrayDeserializer],
+    "value.deserializer" -> classOf[ByteArrayDeserializer],
+    "auto.offset.reset" -> "earliest",
+    "enable.auto.commit" -> false.asInstanceOf[Object]
+  )
+}
+```
+
+Use it as a template to create your own as needed. Note that the tool will attempt to validate these settings to ensure necessary expectations are not violated (such as auto commit remaining disabled). This can be overridden by including the `--force` parameter, but will result in data loss.
+
+Note that the deserializers specified here (`ByteArrayDeserializer`) should correspond to the types of the selected custom event adapter. For example, if `key.deserializer` and `value.deserializer` were both set to `classOf[LongDeserializer]`, the event adapter selected in tandem with this config map (through program arguments) should have the following interface.
+
+```scala
+object MyLongAdapter extends ((ConsumerRecord[Long, Long]) => EventData) with Serializable {
+  override def apply(v1: ConsumerRecord[Long, Long]): EventData = ???
+}
+```
+
 # Notes
 - At-least-once semantics are guaranteed, meaning each event in Kafka will be placed into the EventHub topic at least once, but not exactly once (duplicates are possible). Consequently, downstream EventHub topic consumers must be able to handle duplicates.
 - When configuring Spark workers, consider that tasks running in parallel on the same Spark nodes may be competing for network bandwidth.
