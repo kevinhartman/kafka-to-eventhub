@@ -1,5 +1,5 @@
 # Kafka to EventHub Mirror
-This purpose of this project is to mirror data from a Kafka instance into Azure EventHub in real time. It consists of an Apache Spark streaming application which allows it to scale out to match the parallelism (# of partitions) of the source Kafka topic(s).
+This purpose of this project is to mirror data from a Kafka instance into Azure EventHub in real time. It's implemented as an Apache Spark streaming application which allows it to scale out to match the parallelism (# of partitions) of the source Kafka topic(s).
 
 # Deployment
 To use this tool, build it and deploy to a Spark cluster. It should work out of the box with minimal configuration. The following section lists the available parameters and their functions (passed as program arguments).
@@ -15,7 +15,7 @@ To use this tool, build it and deploy to a Spark cluster. It should work out of 
 `--zookeeper` | Zookeeper hostname
 `--group-id` | Kafka group ID used for commit log
 `--adapter-object` | Fully qualified Scala root-level object name of function to use when converting deserialized data from Kafka to EventHub format
-`--kafka-params-object` | Fully qualified Scala root-level object name of function supplying a custom Kafak parameter map
+`--kafka-params-object` | Fully qualified Scala root-level object name of function supplying a custom Kafka parameter map
 `--compression` | Compress events sent to EventHub using the specified format (currently supports 'gzip' only). If compression is used, EventHub consumers must be capable of decompressing data. For example, Azure Stream Analytics supports automatic decompression from an EventHub, which can be configured when adding a new input source.
 `--force` | Skip validation of Kafka parameters
 
